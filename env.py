@@ -75,7 +75,7 @@ bombs = []
 fires = []
 destruction_buffer = []
 fire_destruction_buffer = []
-
+"""
 while True:
     for event in pg.event.get():
         if event.type == pg.QUIT:
@@ -119,3 +119,4 @@ while True:
 
     pg.display.flip()
     clock.tick(int(framerate))
+"""
