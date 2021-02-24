@@ -3,6 +3,10 @@ import numpy as np
 import pygame as pg
 import random
 
+# TODO: only do this if test flag is passed
+import os
+os.environ["SDL_VIDEODRIVER"] = "dummy"
+
 dimensions = (11, 11) # w, h
 scale = 32
 framerate = 20
