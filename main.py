@@ -1,15 +1,26 @@
 
+import environment.bombots as bb
+
 import numpy as np
 import pygame as pg
 import random
+
 import sys
 
 if '--novid' in sys.argv: 
     import os
     os.environ["SDL_VIDEODRIVER"] = "dummy"
 
-dimensions = (11, 11) # w, h
-scale = 32
+env = bb.Bombots()
+
+if '--test' not in sys.argv:
+    while True:
+        env.step()
+        env.render()
+
+"""
+dimensions = (15, 15) # w, h
+scale = 64
 framerate = 20
 
 pg.init()
@@ -81,7 +92,6 @@ fires = []
 destruction_buffer = []
 fire_destruction_buffer = []
 
-"""
 while True:
     for event in pg.event.get():
         if event.type == pg.QUIT:
