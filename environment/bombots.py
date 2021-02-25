@@ -121,7 +121,7 @@ class Upgrade:
 class Bombots(gym.Env):
     NOP, UP, DOWN, LEFT, RIGHT, BOMB = range(6)
     
-    def __init__(self, dimensions=(11, 11), render_mode=1, framerate=20, scale=32):
+    def __init__(self, dimensions=(11, 11), render_mode=1, framerate=20, scale=32, start_pos=[(1, 1), (9, 9)]):
         self.dimensions = dimensions # w, h
         self.scale = scale # pixels per square
         self.framerate = framerate # frames per second (0 = no cap)
@@ -130,7 +130,7 @@ class Bombots(gym.Env):
         self.box_map = np.zeros(self.dimensions)
         self.fire_map = np.zeros(self.dimensions)
 
-        self.bbots = [Bombot(self, (1, 0)), Bombot(self, (3, 0))] # Object list
+        self.bbots = [Bombot(self, pos) for pos in start_pos] # Object list
         self.bombs = [] # Object list
         self.fires = [] # Object list
         self.upers = [] # Object list
@@ -138,11 +138,16 @@ class Bombots(gym.Env):
         self.killbuf_bomb = [] # Object destruction buffer
         self.killbuf_fire = [] # Object destruction buffer
 
+        start_area = [pos for pos in start_pos]
+        for pos in start_pos:
+            i, j = pos
+            start_area.extend([(i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)])
+        
         for i in range(self.dimensions[0]):
             for j in range(self.dimensions[1]):
                 if i % 2 == 0 and j % 2 == 0:
                     self.board[i][j] = 1
-                elif random.randint(0, 2) == 0:
+                elif random.randint(0, 1) == 0 and (i, j) not in start_area:
                     self.box_map[i][j] = 1
 
         if self.render:
@@ -153,12 +158,12 @@ class Bombots(gym.Env):
             #self.spr = pg.image.load('environment/res/bb_sprites.png').convert_alpha()
 
 
-    def step(self):
+    def step(self, actions):
         # clearance
         self.fire_map = np.zeros(self.dimensions)
 
-        for bot in self.bbots:
-            bot.act(random.randint(0, 5))
+        for i in range(len(self.bbots)):
+            self.bbots[i].act(actions[i])
 
         # object tick
         for fire in self.fires: # Tick fire before bombs, to allow fire triggering bombs (as the firemap is cleared every tick)
@@ -175,29 +180,47 @@ class Bombots(gym.Env):
             self.fires.remove(fire)
         self.killbuf_fire.clear()
         
+        state_a = {'agent_pos' : (self.bbots[0].x, self.bbots[0].y), 'enemy_pos' : (self.bbots[1].x, self.bbots[1].y)}
+        state_b = {'agent_pos' : (self.bbots[1].x, self.bbots[1].y), 'enemy_pos' : (self.bbots[0].x, self.bbots[0].y)}
+        
+        bomb_pos = [(bomb.x, bomb.y) for bomb in self.bombs]
+        state_a['bomb_pos'] = bomb_pos
+        state_b['bomb_pos'] = bomb_pos
+        
+        return state_a, state_b
+        
+    def reset(self): # TODO: Make this a real reset function
+        state_a = {'agent_pos' : (self.bbots[0].x, self.bbots[0].y), 'enemy_pos' : (self.bbots[1].x, self.bbots[1].y)}
+        state_b = {'agent_pos' : (self.bbots[1].x, self.bbots[1].y), 'enemy_pos' : (self.bbots[0].x, self.bbots[0].y)}
+        
+        bomb_pos = [(bomb.x, bomb.y) for bomb in self.bombs]
+        state_a['bomb_pos'] = bomb_pos
+        state_b['bomb_pos'] = bomb_pos
+        
+        return state_a, state_b
 
     def render(self):
-        # Background
+        # Base color
         pg.draw.rect(self.screen, (24, 24, 24), (0, 0, self.dimensions[0] * self.scale, self.dimensions[1] * self.scale))
         
-        # Walls and fire
         for i in range(self.dimensions[0]):
             for j in range(self.dimensions[1]):
+                # Wall
                 if self.board[i][j] == 1:
                     self.screen.blit(self.tm.spr_wall, (self.scale * i, self.scale * j, self.scale, self.scale))
+                # Floor
                 else:
                     self.screen.blit(self.tm.spr_floor, (self.scale * i, self.scale * j, self.scale, self.scale))
-        
+                # Box
                 if self.box_map[i][j] == 1:
                     self.screen.blit(self.tm.spr_box, (self.scale * i, self.scale * j, self.scale, self.scale))
-                
+                # Fire [TODO: Tiling]
                 if self.fire_map[i][j] == 1:
                     self.screen.blit(self.tm.spr_fire_x, (self.scale * i, self.scale * j, self.scale, self.scale))
                 
         # Bombs
         for bomb in self.bombs:
             self.screen.blit(self.tm.spr_bomb, (self.scale * bomb.x, self.scale * bomb.y, self.scale, self.scale))
-        #pg.draw.rect(self.screen, (0, 128, 0), (self.scale * bomb.x, self.scale * bomb.y, self.scale, self.scale)) # x, y, w, h
 
         # Bots
         bot = self.bbots[0]
@@ -212,11 +235,5 @@ class Bombots(gym.Env):
         if bot.face == Bombot.FACE_E: self.screen.blit(self.tm.spr_bot2_e, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
         if bot.face == Bombot.FACE_W: self.screen.blit(self.tm.spr_bot2_w, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
         
-        #pg.draw.rect(self.screen, (128, 0, 0), (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale)) # x, y, w, h
-
-        #sprite = pg.Surface((self.scale, self.scale), pg.SRCALPHA)
-        #sprite.blit(self.spr, (0, 0, 32, 32), (32, 0, 32, 32)) # source, dest, source area
-        #for i in range(8):
-        #    self.screen.blit(sprite, (self.scale * i, 0, 32, 32))
         pg.display.flip()
         self.clock.tick(int(self.framerate))
