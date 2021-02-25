@@ -2,27 +2,38 @@ import gym
 import numpy as np
 import pygame as pg
 import random
+from .texman import TexMan
 
 class Bombot:
+    FACE_N, FACE_S, FACE_E, FACE_W = range(4)
+    
     def __init__(self, env, spawn_location):
         self.x, self.y = spawn_location # (i, j) = (x, y), [x][y]
         self.ammo = 1
         self.env = env
+        self.face = Bombot.FACE_S
 
     def act(self, action):
         # Movement
         if action == Bombots.UP:
             if self.y - 1 in range(self.env.dimensions[1]) and self.env.board[self.x][self.y - 1] == 0 and self.env.box_map[self.x][self.y - 1] == 0:
                 self.y -= 1
+            self.face = Bombot.FACE_N
+            
         if action == Bombots.DOWN:
             if self.y + 1 in range(self.env.dimensions[1]) and self.env.board[self.x][self.y + 1] == 0 and self.env.box_map[self.x][self.y + 1] == 0:
                 self.y += 1
+            self.face = Bombot.FACE_S
+
         if action == Bombots.LEFT:
             if self.x - 1 in range(self.env.dimensions[0]) and self.env.board[self.x - 1][self.y] == 0 and self.env.box_map[self.x - 1][self.y] == 0:
                 self.x -= 1
+            self.face = Bombot.FACE_W
+        
         if action == Bombots.RIGHT:
             if self.x + 1 in range(self.env.dimensions[0]) and self.env.board[self.x + 1][self.y] == 0 and self.env.box_map[self.x + 1][self.y] == 0:
                 self.x += 1
+            self.face = Bombot.FACE_E
         # Bombing
         if action == Bombots.BOMB:
             if self.ammo > 0:
@@ -138,6 +149,9 @@ class Bombots(gym.Env):
             pg.init()
             self.screen = pg.display.set_mode((self.dimensions[0] * self.scale, self.dimensions[1] * self.scale))
             self.clock = pg.time.Clock()
+            self.tm = TexMan(self.scale)
+            #self.spr = pg.image.load('environment/res/bb_sprites.png').convert_alpha()
+
 
     def step(self):
         # clearance
@@ -170,19 +184,39 @@ class Bombots(gym.Env):
         for i in range(self.dimensions[0]):
             for j in range(self.dimensions[1]):
                 if self.board[i][j] == 1:
-                    pg.draw.rect(self.screen, (64, 64, 64), (self.scale * i, self.scale * j, self.scale, self.scale))
+                    self.screen.blit(self.tm.spr_wall, (self.scale * i, self.scale * j, self.scale, self.scale))
+                else:
+                    self.screen.blit(self.tm.spr_floor, (self.scale * i, self.scale * j, self.scale, self.scale))
+        
                 if self.box_map[i][j] == 1:
-                    pg.draw.rect(self.screen, (64, 64, 0), (self.scale * i, self.scale * j, self.scale, self.scale))
+                    self.screen.blit(self.tm.spr_box, (self.scale * i, self.scale * j, self.scale, self.scale))
+                
                 if self.fire_map[i][j] == 1:
-                    pg.draw.rect(self.screen, (160, 160, 0), (self.scale * i, self.scale * j, self.scale, self.scale))
-
+                    self.screen.blit(self.tm.spr_fire_x, (self.scale * i, self.scale * j, self.scale, self.scale))
+                
         # Bombs
         for bomb in self.bombs:
-            pg.draw.rect(self.screen, (0, 128, 0), (self.scale * bomb.x, self.scale * bomb.y, self.scale, self.scale)) # x, y, w, h
+            self.screen.blit(self.tm.spr_bomb, (self.scale * bomb.x, self.scale * bomb.y, self.scale, self.scale))
+        #pg.draw.rect(self.screen, (0, 128, 0), (self.scale * bomb.x, self.scale * bomb.y, self.scale, self.scale)) # x, y, w, h
 
         # Bots
-        for bot in self.bbots:
-            pg.draw.rect(self.screen, (128, 0, 0), (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale)) # x, y, w, h
+        bot = self.bbots[0]
+        if bot.face == Bombot.FACE_N: self.screen.blit(self.tm.spr_bot1_n, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        if bot.face == Bombot.FACE_S: self.screen.blit(self.tm.spr_bot1_s, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        if bot.face == Bombot.FACE_E: self.screen.blit(self.tm.spr_bot1_e, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        if bot.face == Bombot.FACE_W: self.screen.blit(self.tm.spr_bot1_w, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        
+        bot = self.bbots[1]
+        if bot.face == Bombot.FACE_N: self.screen.blit(self.tm.spr_bot2_n, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        if bot.face == Bombot.FACE_S: self.screen.blit(self.tm.spr_bot2_s, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        if bot.face == Bombot.FACE_E: self.screen.blit(self.tm.spr_bot2_e, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        if bot.face == Bombot.FACE_W: self.screen.blit(self.tm.spr_bot2_w, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        
+        #pg.draw.rect(self.screen, (128, 0, 0), (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale)) # x, y, w, h
 
+        #sprite = pg.Surface((self.scale, self.scale), pg.SRCALPHA)
+        #sprite.blit(self.spr, (0, 0, 32, 32), (32, 0, 32, 32)) # source, dest, source area
+        #for i in range(8):
+        #    self.screen.blit(sprite, (self.scale * i, 0, 32, 32))
         pg.display.flip()
         self.clock.tick(int(self.framerate))

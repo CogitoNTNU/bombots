@@ -11,7 +11,7 @@ if '--novid' in sys.argv:
     import os
     os.environ["SDL_VIDEODRIVER"] = "dummy"
 
-env = bb.Bombots()
+env = bb.Bombots(scale=64)
 
 if '--test' not in sys.argv:
     while True:
