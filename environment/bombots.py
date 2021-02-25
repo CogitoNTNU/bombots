@@ -16,22 +16,22 @@ class Bombot:
     def act(self, action):
         # Movement
         if action == Bombots.UP:
-            if self.y - 1 in range(self.env.dimensions[1]) and self.env.board[self.x][self.y - 1] == 0 and self.env.box_map[self.x][self.y - 1] == 0:
+            if self.y - 1 in range(self.env.dimensions[1]) and self.env.wall_map[self.x][self.y - 1] == 0 and self.env.box_map[self.x][self.y - 1] == 0:
                 self.y -= 1
             self.face = Bombot.FACE_N
             
         if action == Bombots.DOWN:
-            if self.y + 1 in range(self.env.dimensions[1]) and self.env.board[self.x][self.y + 1] == 0 and self.env.box_map[self.x][self.y + 1] == 0:
+            if self.y + 1 in range(self.env.dimensions[1]) and self.env.wall_map[self.x][self.y + 1] == 0 and self.env.box_map[self.x][self.y + 1] == 0:
                 self.y += 1
             self.face = Bombot.FACE_S
 
         if action == Bombots.LEFT:
-            if self.x - 1 in range(self.env.dimensions[0]) and self.env.board[self.x - 1][self.y] == 0 and self.env.box_map[self.x - 1][self.y] == 0:
+            if self.x - 1 in range(self.env.dimensions[0]) and self.env.wall_map[self.x - 1][self.y] == 0 and self.env.box_map[self.x - 1][self.y] == 0:
                 self.x -= 1
             self.face = Bombot.FACE_W
         
         if action == Bombots.RIGHT:
-            if self.x + 1 in range(self.env.dimensions[0]) and self.env.board[self.x + 1][self.y] == 0 and self.env.box_map[self.x + 1][self.y] == 0:
+            if self.x + 1 in range(self.env.dimensions[0]) and self.env.wall_map[self.x + 1][self.y] == 0 and self.env.box_map[self.x + 1][self.y] == 0:
                 self.x += 1
             self.face = Bombot.FACE_E
         # Bombing
@@ -64,7 +64,7 @@ class Fire:
         self.fire_pos = [(self.x, self.y)]
         
         for i in range(1, self.size + 1):
-            if self.x + i in range(self.env.dimensions[0]) and self.env.board[self.x + i][self.y] == 0:
+            if self.x + i in range(self.env.dimensions[0]) and self.env.wall_map[self.x + i][self.y] == 0:
                 self.fire_pos.append((self.x + i, self.y))
                 if self.env.box_map[self.x + i][self.y] == 1:
                     self.env.box_map[self.x + i][self.y] = 0
@@ -73,7 +73,7 @@ class Fire:
                 break
 
         for i in range(1, self.size + 1):
-            if self.x - i in range(self.env.dimensions[0]) and self.env.board[self.x - i][self.y] == 0:
+            if self.x - i in range(self.env.dimensions[0]) and self.env.wall_map[self.x - i][self.y] == 0:
                 self.fire_pos.append((self.x - i, self.y))
                 if self.env.box_map[self.x - i][self.y] == 1:
                     self.env.box_map[self.x - i][self.y] = 0
@@ -82,7 +82,7 @@ class Fire:
                 break
 
         for i in range(1, self.size + 1):
-            if self.y + i in range(self.env.dimensions[1]) and self.env.board[self.x][self.y + i] == 0:
+            if self.y + i in range(self.env.dimensions[1]) and self.env.wall_map[self.x][self.y + i] == 0:
                 self.fire_pos.append((self.x, self.y + i))
                 if self.env.box_map[self.x][self.y + i] == 1:
                     self.env.box_map[self.x][self.y + i] = 0
@@ -91,7 +91,7 @@ class Fire:
                 break
 
         for i in range(1, self.size + 1):
-            if self.y - i in range(self.env.dimensions[1]) and self.env.board[self.x][self.y - i] == 0:
+            if self.y - i in range(self.env.dimensions[1]) and self.env.wall_map[self.x][self.y - i] == 0:
                 self.fire_pos.append((self.x, self.y - i))
                 if self.env.box_map[self.x][self.y - i] == 1:
                     self.env.box_map[self.x][self.y - i] = 0
@@ -126,7 +126,7 @@ class Bombots(gym.Env):
         self.scale = scale # pixels per square
         self.framerate = framerate # frames per second (0 = no cap)
         self.render_mode = render_mode # 0 = no rendering, 1 = normal rendering, 2 = reduced rendering etc.
-        self.board = np.zeros(self.dimensions) # walls
+        self.wall_map = np.zeros(self.dimensions) # walls
         self.box_map = np.zeros(self.dimensions)
         self.fire_map = np.zeros(self.dimensions)
 
@@ -146,7 +146,7 @@ class Bombots(gym.Env):
         for i in range(self.dimensions[0]):
             for j in range(self.dimensions[1]):
                 if i % 2 == 0 and j % 2 == 0:
-                    self.board[i][j] = 1
+                    self.wall_map[i][j] = 1
                 elif random.randint(0, 1) == 0 and (i, j) not in start_area:
                     self.box_map[i][j] = 1
 
@@ -206,7 +206,7 @@ class Bombots(gym.Env):
         for i in range(self.dimensions[0]):
             for j in range(self.dimensions[1]):
                 # Wall
-                if self.board[i][j] == 1:
+                if self.wall_map[i][j] == 1:
                     self.screen.blit(self.tm.spr_wall, (self.scale * i, self.scale * j, self.scale, self.scale))
                 # Floor
                 else:
@@ -220,7 +220,7 @@ class Bombots(gym.Env):
                 
         # Bombs
         for bomb in self.bombs:
-            self.screen.blit(self.tm.spr_bomb, (self.scale * bomb.x, self.scale * bomb.y, self.scale, self.scale))
+            self.screen.blit(self.tm.spr_bomb[3 - (bomb.fuse // 8)], (self.scale * bomb.x, self.scale * bomb.y, self.scale, self.scale))
 
         # Bots
         bot = self.bbots[0]

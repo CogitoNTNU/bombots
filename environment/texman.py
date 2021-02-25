@@ -25,7 +25,12 @@ class TexMan: # Texture Manager
         self.spr_bot2_e = self.copy_spr((2, 2))
         self.spr_bot2_w = self.copy_spr((2, 3))
         
-        self.spr_bomb = self.copy_spr((4, 0))
+        self.spr_bomb = [
+            self.copy_spr((4, 0)),
+            self.copy_spr((4, 1)),
+            self.copy_spr((4, 2)),
+            self.copy_spr((4, 3))
+        ]
 
         self.spr_fire_n = self.copy_spr((7, 0)) # North end
         self.spr_fire_s = self.copy_spr((7, 3)) # South end
