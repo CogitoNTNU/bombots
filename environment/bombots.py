@@ -123,6 +123,7 @@ class Bombots(gym.Env):
     
     def __init__(self, dimensions=(11, 11), render_mode=1, framerate=20, scale=32, start_pos=[(1, 1), (9, 9)]):
         self.dimensions = dimensions # w, h
+        self.w, self.h = dimensions # for cleaner code :)
         self.scale = scale # pixels per square
         self.framerate = framerate # frames per second (0 = no cap)
         self.render_mode = render_mode # 0 = no rendering, 1 = normal rendering, 2 = reduced rendering etc.
@@ -187,6 +188,12 @@ class Bombots(gym.Env):
         state_a['bomb_pos'] = bomb_pos
         state_b['bomb_pos'] = bomb_pos
         
+        state_a['agent_ref'] = self.bbots[0]
+        state_b['agent_ref'] = self.bbots[1]
+        
+        state_a['enemy_ref'] = self.bbots[1]
+        state_b['enemy_ref'] = self.bbots[0]
+
         return state_a, state_b
         
     def reset(self): # TODO: Make this a real reset function
@@ -197,6 +204,12 @@ class Bombots(gym.Env):
         state_a['bomb_pos'] = bomb_pos
         state_b['bomb_pos'] = bomb_pos
         
+        state_a['agent_ref'] = self.bbots[0]
+        state_b['agent_ref'] = self.bbots[1]
+        
+        state_a['enemy_ref'] = self.bbots[1]
+        state_b['enemy_ref'] = self.bbots[0]
+
         return state_a, state_b
 
     def render(self):
