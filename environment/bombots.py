@@ -3,6 +3,7 @@ import numpy as np
 import pygame as pg
 import random
 import sys
+from collections import deque
 from .texman import TexMan
 
 class Bombot:
@@ -13,6 +14,7 @@ class Bombot:
         self.ammo = 1
         self.env = env
         self.face = Bombot.FACE_S
+        self.dead = False
 
     def act(self, action):
         # Movement
@@ -56,6 +58,7 @@ class Bomb:
             self.instigator.ammo += 1
             self.env.killbuf_bomb.append(self)
             self.env.fires.append(Fire(self.env, self, (self.x, self.y)))
+
 class Fire:
     def __init__(self, env, instigator, position):
         self.env = env
@@ -122,12 +125,13 @@ class Upgrade:
 class Bombots(gym.Env):
     NOP, UP, DOWN, LEFT, RIGHT, BOMB = range(6)
     
-    def __init__(self, dimensions=(11, 11), render_mode=1, framerate=20, scale=32, start_pos=[(1, 1), (9, 9)]):
+    def __init__(self, dimensions=(11, 11), render_mode=1, framerate=20, scale=32, start_pos=[(1, 1), (9, 9)], show_fps=False):
         self.dimensions = dimensions # w, h
         self.w, self.h = dimensions # for cleaner code :)
         self.scale = scale # pixels per square
         self.framerate = framerate # frames per second (0 = no cap)
         self.render_mode = render_mode # 0 = no rendering, 1 = normal rendering, 2 = reduced rendering etc.
+        self.show_fps = show_fps
         self.wall_map = np.zeros(self.dimensions) # walls
         self.box_map = np.zeros(self.dimensions)
         self.fire_map = np.zeros(self.dimensions)
@@ -139,6 +143,8 @@ class Bombots(gym.Env):
 
         self.killbuf_bomb = [] # Object destruction buffer
         self.killbuf_fire = [] # Object destruction buffer
+    
+        self.buf_frametime = deque((1, 1), maxlen=100)
 
         start_area = [pos for pos in start_pos]
         for pos in start_pos:
@@ -152,12 +158,12 @@ class Bombots(gym.Env):
                 elif random.randint(0, 1) == 0 and (i, j) not in start_area:
                     self.box_map[i][j] = 1
 
-        if self.render:
+        if self.render: # Pygame setup
             pg.init()
             self.screen = pg.display.set_mode((self.dimensions[0] * self.scale, self.dimensions[1] * self.scale))
             self.clock = pg.time.Clock()
             self.tm = TexMan(self.scale)
-            #self.spr = pg.image.load('environment/res/bb_sprites.png').convert_alpha()
+            self.font = pg.font.Font(pg.font.get_default_font(), 16)
 
 
     def step(self, actions):
@@ -191,6 +197,11 @@ class Bombots(gym.Env):
             self.fires.remove(fire)
         self.killbuf_fire.clear()
         
+        for bot in self.bbots:
+            if self.fire_map[bot.x][bot.y] == 1:
+                bot.dead = True
+                print('He dead :(')
+
         state_a = {'agent_pos' : (self.bbots[0].x, self.bbots[0].y), 'enemy_pos' : (self.bbots[1].x, self.bbots[1].y)}
         state_b = {'agent_pos' : (self.bbots[1].x, self.bbots[1].y), 'enemy_pos' : (self.bbots[0].x, self.bbots[0].y)}
         
@@ -252,11 +263,18 @@ class Bombots(gym.Env):
         if bot.face == Bombot.FACE_E: self.screen.blit(self.tm.spr_bot1_e, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
         if bot.face == Bombot.FACE_W: self.screen.blit(self.tm.spr_bot1_w, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
         
+        # Forgive the horrible code here [TODO: Make this nice]
         bot = self.bbots[1]
         if bot.face == Bombot.FACE_N: self.screen.blit(self.tm.spr_bot2_n, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
         if bot.face == Bombot.FACE_S: self.screen.blit(self.tm.spr_bot2_s, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
         if bot.face == Bombot.FACE_E: self.screen.blit(self.tm.spr_bot2_e, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
         if bot.face == Bombot.FACE_W: self.screen.blit(self.tm.spr_bot2_w, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
         
+        # Overlays
+        if self.show_fps:
+            fps = 1000 // (sum(list(self.buf_frametime)) / len(list(self.buf_frametime)))
+            text_surface = self.font.render('FPS: {}'.format(fps), True, (255, 0, 0))
+            self.screen.blit(text_surface, dest=(self.scale * self.w - text_surface.get_width() - 8, 8))
+
         pg.display.flip()
-        self.clock.tick(int(self.framerate))
+        self.buf_frametime.append(self.clock.tick(int(self.framerate)))
