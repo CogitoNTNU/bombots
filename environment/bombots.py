@@ -2,6 +2,7 @@ import gym
 import numpy as np
 import pygame as pg
 import random
+import sys
 from .texman import TexMan
 
 class Bombot:
@@ -160,9 +161,18 @@ class Bombots(gym.Env):
 
 
     def step(self, actions):
-        # clearance
+        # Clearance
         self.fire_map = np.zeros(self.dimensions)
 
+        # Event handling
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+                sys.exit()
+
+        pg.event.pump()
+
+        # Apply actions
         for i in range(len(self.bbots)):
             self.bbots[i].act(actions[i])
 
