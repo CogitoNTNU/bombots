@@ -126,39 +126,38 @@ class Bombots(gym.Env):
     NOP, UP, DOWN, LEFT, RIGHT, BOMB = range(6)
     
     def __init__(self, dimensions=(11, 11), render_mode=1, framerate=20, scale=32, start_pos=[(1, 1), (9, 9)], show_fps=False):
+        # Environment configuration
         self.dimensions = dimensions # w, h
         self.w, self.h = dimensions # for cleaner code :)
-        self.scale = scale # pixels per square
-        self.framerate = framerate # frames per second (0 = no cap)
-        self.render_mode = render_mode # 0 = no rendering, 1 = normal rendering, 2 = reduced rendering etc.
-        self.show_fps = show_fps
-        self.wall_map = np.zeros(self.dimensions) # walls
-        self.box_map = np.zeros(self.dimensions)
-        self.fire_map = np.zeros(self.dimensions)
+        self.start_pos = start_pos
+        self.random_seed = 0
 
+        # Object management
         self.bbots = [Bombot(self, pos) for pos in start_pos] # Object list
         self.bombs = [] # Object list
         self.fires = [] # Object list
         self.upers = [] # Object list
-
         self.killbuf_bomb = [] # Object destruction buffer
         self.killbuf_fire = [] # Object destruction buffer
     
+        # Map generation
+        self.generate_map()
+
+        # Stats
+        self.stats = {
+            'player1_wins' : 0,
+            'player2_wins' : 0
+        }
+
+        # Rendering
+        self.scale = scale # pixels per square
         self.buf_frametime = deque((1, 1), maxlen=100)
-
-        start_area = [pos for pos in start_pos]
-        for pos in start_pos:
-            i, j = pos
-            start_area.extend([(i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)])
+        self.framerate = framerate # frames per second (0 = no cap)
+        self.render_mode = render_mode # 0 = no rendering, 1 = normal rendering, 2 = reduced rendering etc.
+        self.show_fps = show_fps
         
-        for i in range(self.dimensions[0]):
-            for j in range(self.dimensions[1]):
-                if i % 2 == 0 and j % 2 == 0:
-                    self.wall_map[i][j] = 1
-                elif random.randint(0, 1) == 0 and (i, j) not in start_area:
-                    self.box_map[i][j] = 1
-
-        if self.render: # Pygame setup
+        # Pygame setup
+        if self.render: 
             pg.init()
             self.screen = pg.display.set_mode((self.dimensions[0] * self.scale, self.dimensions[1] * self.scale))
             self.clock = pg.time.Clock()
@@ -197,10 +196,13 @@ class Bombots(gym.Env):
             self.fires.remove(fire)
         self.killbuf_fire.clear()
         
-        for bot in self.bbots:
-            if self.fire_map[bot.x][bot.y] == 1:
-                bot.dead = True
-                print('He dead :(')
+        done = False
+        
+        for i in range(len(self.bbots)):
+            if self.fire_map[self.bbots[i].x][self.bbots[i].y] == 1:
+                self.stats['player{}_wins'.format(i + 1)] += 1
+                self.bbots[i].dead = True
+                done = True
 
         state_a = {'agent_pos' : (self.bbots[0].x, self.bbots[0].y), 'enemy_pos' : (self.bbots[1].x, self.bbots[1].y)}
         state_b = {'agent_pos' : (self.bbots[1].x, self.bbots[1].y), 'enemy_pos' : (self.bbots[0].x, self.bbots[0].y)}
@@ -215,9 +217,18 @@ class Bombots(gym.Env):
         state_a['enemy_ref'] = self.bbots[1]
         state_b['enemy_ref'] = self.bbots[0]
 
-        return state_a, state_b
+        
+
+        return state_a, state_b, done
         
     def reset(self): # TODO: Make this a real reset function
+        self.generate_map()
+
+        self.bbots = [Bombot(self, pos) for pos in self.start_pos] # Object list
+        self.bombs = [] # Object list
+        self.fires = [] # Object list
+        self.upers = [] # Object list
+        
         state_a = {'agent_pos' : (self.bbots[0].x, self.bbots[0].y), 'enemy_pos' : (self.bbots[1].x, self.bbots[1].y)}
         state_b = {'agent_pos' : (self.bbots[1].x, self.bbots[1].y), 'enemy_pos' : (self.bbots[0].x, self.bbots[0].y)}
         
@@ -232,6 +243,23 @@ class Bombots(gym.Env):
         state_b['enemy_ref'] = self.bbots[0]
 
         return state_a, state_b
+
+    def generate_map(self, seed=0):
+        self.wall_map = np.zeros(self.dimensions) # walls
+        self.box_map = np.zeros(self.dimensions)
+        self.fire_map = np.zeros(self.dimensions)
+        
+        start_area = [pos for pos in self.start_pos]
+        for pos in self.start_pos:
+            i, j = pos
+            start_area.extend([(i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)])
+        
+        for i in range(self.dimensions[0]):
+            for j in range(self.dimensions[1]):
+                if i % 2 == 0 and j % 2 == 0:
+                    self.wall_map[i][j] = 1
+                elif random.randint(0, 1) == 0 and (i, j) not in start_area:
+                    self.box_map[i][j] = 1
 
     def render(self):
         # Base color
@@ -275,6 +303,8 @@ class Bombots(gym.Env):
             fps = 1000 // (sum(list(self.buf_frametime)) / len(list(self.buf_frametime)))
             text_surface = self.font.render('FPS: {}'.format(fps), True, (255, 0, 0))
             self.screen.blit(text_surface, dest=(self.scale * self.w - text_surface.get_width() - 8, 8))
-
+            text_surface2 = self.font.render('Stats: {} - {}'.format(self.stats['player1_wins'], self.stats['player2_wins']), True, (255, 0, 0))
+            self.screen.blit(text_surface2, dest=(self.scale * self.w - text_surface2.get_width() - 8, 32))
+            
         pg.display.flip()
         self.buf_frametime.append(self.clock.tick(int(self.framerate)))
