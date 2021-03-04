@@ -127,7 +127,7 @@ class Upgrade:
 class Bombots(gym.Env):
     NOP, UP, DOWN, LEFT, RIGHT, BOMB = range(6)
     
-    def __init__(self, dimensions=(11, 11), render_mode=1, framerate=20, scale=32, start_pos=[(1, 1), (9, 9)], show_fps=False):
+    def __init__(self, dimensions=(11, 11), render_mode=1, framerate=20, scale=32, start_pos=[(1, 1), (9, 9)], show_fps=False, standalone=True):
         # Environment configuration
         self.dimensions = dimensions # w, h
         self.w, self.h = dimensions # for cleaner code :)
@@ -162,9 +162,13 @@ class Bombots(gym.Env):
         self.show_fps = show_fps
         
         # Pygame setup
-        if self.render: 
-            pg.init()
-            self.screen = pg.display.set_mode((self.dimensions[0] * self.scale, self.dimensions[1] * self.scale))
+        if self.render:  
+            if standalone:
+                pg.init()
+                self.screen = pg.display.set_mode((self.dimensions[0] * self.scale, self.dimensions[1] * self.scale))
+            else:
+                self.screen = pg.Surface((self.dimensions[0] * self.scale, self.dimensions[1] * self.scale))
+                
             self.clock = pg.time.Clock()
             self.tm = TexMan(self.scale)
             self.font = pg.font.Font(pg.font.get_default_font(), 16)
@@ -217,7 +221,8 @@ class Bombots(gym.Env):
         self.killbuf_fire.clear()
         
         for upg in self.killbuf_upg:
-            self.upers.remove(upg)
+            if upg in self.upers: 
+                self.upers.remove(upg)
         self.killbuf_upg.clear()
         
         for i in range(len(self.bbots)):
