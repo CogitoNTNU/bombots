@@ -12,6 +12,7 @@ class Bombot:
     def __init__(self, env, spawn_location):
         self.x, self.y = spawn_location # (i, j) = (x, y), [x][y]
         self.ammo = 1
+        self.str = 1
         self.env = env
         self.face = Bombot.FACE_S
         self.dead = False
@@ -48,6 +49,7 @@ class Bomb:
         self.env = env
         self.instigator = instigator
         self.fuse = 30
+        self.str = self.instigator.str
         self.x, self.y = (instigator.x, instigator.y)
 
     def tick(self):
@@ -62,7 +64,7 @@ class Bomb:
 class Fire:
     def __init__(self, env, instigator, position):
         self.env = env
-        self.size = 1
+        self.size = instigator.str
         self.life = 5
         self.x, self.y = position
         self.fire_pos = [(self.x, self.y)]
@@ -132,6 +134,8 @@ class Bombots(gym.Env):
         self.start_pos = start_pos
         self.random_seed = 0
 
+        self.n_frames = 0
+
         # Object management
         self.bbots = [Bombot(self, pos) for pos in start_pos] # Object list
         self.bombs = [] # Object list
@@ -139,6 +143,7 @@ class Bombots(gym.Env):
         self.upers = [] # Object list
         self.killbuf_bomb = [] # Object destruction buffer
         self.killbuf_fire = [] # Object destruction buffer
+        self.killbuf_upg  = [] # Object destruction buffer
     
         # Map generation
         self.generate_map()
@@ -166,6 +171,13 @@ class Bombots(gym.Env):
 
 
     def step(self, actions):
+        done = False
+        
+        self.n_frames += 1
+        if self.n_frames > 1500:
+            self.n_frames = 0
+            done = True
+
         # Clearance
         self.fire_map = np.zeros(self.dimensions)
 
@@ -179,7 +191,15 @@ class Bombots(gym.Env):
 
         # Apply actions
         for i in range(len(self.bbots)):
-            self.bbots[i].act(actions[i])
+            bot = self.bbots[i]
+            bot.act(actions[i])
+            for upg in self.upers:
+                if bot.x == upg.x and bot.y == upg.y:
+                    if upg.upgrade_type == Upgrade.AMMO:
+                        bot.ammo += 1
+                    if upg.upgrade_type == Upgrade.STR:
+                        bot.str += 1
+                    self.killbuf_upg.append(upg)
 
         # object tick
         for fire in self.fires: # Tick fire before bombs, to allow fire triggering bombs (as the firemap is cleared every tick)
@@ -196,7 +216,9 @@ class Bombots(gym.Env):
             self.fires.remove(fire)
         self.killbuf_fire.clear()
         
-        done = False
+        for upg in self.killbuf_upg:
+            self.upers.remove(upg)
+        self.killbuf_upg.clear()
         
         for i in range(len(self.bbots)):
             if self.fire_map[self.bbots[i].x][self.bbots[i].y] == 1:
@@ -217,17 +239,15 @@ class Bombots(gym.Env):
         state_a['enemy_ref'] = self.bbots[1]
         state_b['enemy_ref'] = self.bbots[0]
 
-        
-
         return state_a, state_b, done
         
     def reset(self): # TODO: Make this a real reset function
-        self.generate_map()
-
         self.bbots = [Bombot(self, pos) for pos in self.start_pos] # Object list
         self.bombs = [] # Object list
         self.fires = [] # Object list
         self.upers = [] # Object list
+
+        self.generate_map()
         
         state_a = {'agent_pos' : (self.bbots[0].x, self.bbots[0].y), 'enemy_pos' : (self.bbots[1].x, self.bbots[1].y)}
         state_b = {'agent_pos' : (self.bbots[1].x, self.bbots[1].y), 'enemy_pos' : (self.bbots[0].x, self.bbots[0].y)}
@@ -260,6 +280,8 @@ class Bombots(gym.Env):
                     self.wall_map[i][j] = 1
                 elif random.randint(0, 1) == 0 and (i, j) not in start_area:
                     self.box_map[i][j] = 1
+                elif random.randint(0, 4) == 0 and (i, j) not in start_area:
+                    self.upers.append(Upgrade(self, (i, j), random.randint(0, 1)))
 
     def render(self):
         # Base color
@@ -283,6 +305,10 @@ class Bombots(gym.Env):
         # Bombs
         for bomb in self.bombs:
             self.screen.blit(self.tm.spr_bomb[3 - (bomb.fuse // 8)], (self.scale * bomb.x, self.scale * bomb.y, self.scale, self.scale))
+        
+        # Upgrade
+        for upg in self.upers:
+            self.screen.blit(self.tm.spr_pop_num if upg.upgrade_type == Upgrade.AMMO else self.tm.spr_pop_ext, (self.scale * upg.x, self.scale * upg.y, self.scale, self.scale))
 
         # Bots
         bot = self.bbots[0]
@@ -305,6 +331,6 @@ class Bombots(gym.Env):
             self.screen.blit(text_surface, dest=(self.scale * self.w - text_surface.get_width() - 8, 8))
             text_surface2 = self.font.render('Stats: {} - {}'.format(self.stats['player1_wins'], self.stats['player2_wins']), True, (255, 0, 0))
             self.screen.blit(text_surface2, dest=(self.scale * self.w - text_surface2.get_width() - 8, 32))
-            
+        
         pg.display.flip()
         self.buf_frametime.append(self.clock.tick(int(self.framerate)))

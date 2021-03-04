@@ -25,6 +25,9 @@ class TexMan: # Texture Manager
         self.spr_bot2_e = self.copy_spr((2, 2))
         self.spr_bot2_w = self.copy_spr((2, 3))
         
+        self.spr_pop_ext = self.copy_spr((5, 2))
+        self.spr_pop_num = self.copy_spr((5, 3))
+
         self.spr_bomb = [
             self.copy_spr((4, 0)),
             self.copy_spr((4, 1)),
