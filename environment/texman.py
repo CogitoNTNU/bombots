@@ -15,15 +15,33 @@ class TexMan: # Texture Manager
         self.spr_box = self.copy_spr((5, 1))
         self.spr_wall = self.copy_spr((6, 0))
 
-        self.spr_bot1_n = self.copy_spr((0, 1))
-        self.spr_bot1_s = self.copy_spr((0, 0))
-        self.spr_bot1_e = self.copy_spr((0, 2))
-        self.spr_bot1_w = self.copy_spr((0, 3))
+        self.spr_bot = {
+            'red' : {
+                'n' : self.copy_spr((0, 1)),
+                's' : self.copy_spr((0, 0)),
+                'e' : self.copy_spr((0, 2)),
+                'w' : self.copy_spr((0, 3))
+            },
+            'green' : {
+                'n' : self.copy_spr((1, 1)),
+                's' : self.copy_spr((1, 0)),
+                'e' : self.copy_spr((1, 2)),
+                'w' : self.copy_spr((1, 3))
+            },
+            'blue' : {
+                'n' : self.copy_spr((2, 1)),
+                's' : self.copy_spr((2, 0)),
+                'e' : self.copy_spr((2, 2)),
+                'w' : self.copy_spr((2, 3))
+            },
+            'yellow' : {
+                'n' : self.copy_spr((3, 1)),
+                's' : self.copy_spr((3, 0)),
+                'e' : self.copy_spr((3, 2)),
+                'w' : self.copy_spr((3, 3))
+            }
+        }
 
-        self.spr_bot2_n = self.copy_spr((2, 1))
-        self.spr_bot2_s = self.copy_spr((2, 0))
-        self.spr_bot2_e = self.copy_spr((2, 2))
-        self.spr_bot2_w = self.copy_spr((2, 3))
         
         self.spr_pop_ext = self.copy_spr((5, 2))
         self.spr_pop_num = self.copy_spr((5, 3))
@@ -34,6 +52,16 @@ class TexMan: # Texture Manager
             self.copy_spr((4, 2)),
             self.copy_spr((4, 3))
         ]
+
+        self.spr_fire = {
+            'n' : self.copy_spr((7, 0)),
+            's' : self.copy_spr((7, 3)),
+            'e' : self.copy_spr((6, 3)),
+            'w' : self.copy_spr((6, 1)),
+            'h' : self.copy_spr((6, 2)),
+            'v' : self.copy_spr((7, 2)),
+            'x' : self.copy_spr((7, 1))
+        }
 
         self.spr_fire_n = self.copy_spr((7, 0)) # North end
         self.spr_fire_s = self.copy_spr((7, 3)) # South end

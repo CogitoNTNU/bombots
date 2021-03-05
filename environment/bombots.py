@@ -303,10 +303,25 @@ class Bombots(gym.Env):
                 # Box
                 if self.box_map[i][j] == 1:
                     self.screen.blit(self.tm.spr_box, (self.scale * i, self.scale * j, self.scale, self.scale))
-                # Fire [TODO: Tiling]
-                if self.fire_map[i][j] == 1:
-                    self.screen.blit(self.tm.spr_fire_x, (self.scale * i, self.scale * j, self.scale, self.scale))
                 
+                # Fire
+                if self.fire_map[i][j] == 1:
+                    f_bstr = self.get_neighbors(i, j, self.fire_map)
+                    
+                    fspr_key = 'x'
+                    
+                    # Ends
+                    if f_bstr == (1, 0, 0, 0): fspr_key = 'w'
+                    if f_bstr == (0, 1, 0, 0): fspr_key = 'e'
+                    if f_bstr == (0, 0, 1, 0): fspr_key = 'n'
+                    if f_bstr == (0, 0, 0, 1): fspr_key = 's'
+                    
+                    # Beams
+                    if f_bstr == (1, 1, 0, 0): fspr_key = 'h'
+                    if f_bstr == (0, 0, 1, 1): fspr_key = 'v'
+                    
+                    self.screen.blit(self.tm.spr_fire[fspr_key], (self.scale * i, self.scale * j, self.scale, self.scale))
+        
         # Bombs
         for bomb in self.bombs:
             self.screen.blit(self.tm.spr_bomb[3 - (bomb.fuse // 8)], (self.scale * bomb.x, self.scale * bomb.y, self.scale, self.scale))
@@ -317,17 +332,17 @@ class Bombots(gym.Env):
 
         # Bots
         bot = self.bbots[0]
-        if bot.face == Bombot.FACE_N: self.screen.blit(self.tm.spr_bot1_n, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
-        if bot.face == Bombot.FACE_S: self.screen.blit(self.tm.spr_bot1_s, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
-        if bot.face == Bombot.FACE_E: self.screen.blit(self.tm.spr_bot1_e, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
-        if bot.face == Bombot.FACE_W: self.screen.blit(self.tm.spr_bot1_w, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        if bot.face == Bombot.FACE_N: self.screen.blit(self.tm.spr_bot['green']['n'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        if bot.face == Bombot.FACE_S: self.screen.blit(self.tm.spr_bot['green']['s'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        if bot.face == Bombot.FACE_E: self.screen.blit(self.tm.spr_bot['green']['e'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        if bot.face == Bombot.FACE_W: self.screen.blit(self.tm.spr_bot['green']['w'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
         
         # Forgive the horrible code here [TODO: Make this nice]
         bot = self.bbots[1]
-        if bot.face == Bombot.FACE_N: self.screen.blit(self.tm.spr_bot2_n, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
-        if bot.face == Bombot.FACE_S: self.screen.blit(self.tm.spr_bot2_s, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
-        if bot.face == Bombot.FACE_E: self.screen.blit(self.tm.spr_bot2_e, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
-        if bot.face == Bombot.FACE_W: self.screen.blit(self.tm.spr_bot2_w, (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        if bot.face == Bombot.FACE_N: self.screen.blit(self.tm.spr_bot['yellow']['n'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        if bot.face == Bombot.FACE_S: self.screen.blit(self.tm.spr_bot['yellow']['s'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        if bot.face == Bombot.FACE_E: self.screen.blit(self.tm.spr_bot['yellow']['e'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+        if bot.face == Bombot.FACE_W: self.screen.blit(self.tm.spr_bot['yellow']['w'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
         
         # Overlays
         if self.show_fps:
@@ -339,3 +354,10 @@ class Bombots(gym.Env):
         
         pg.display.flip()
         self.buf_frametime.append(self.clock.tick(int(self.framerate)))
+
+    def get_neighbors(self, x, y, cmap):
+        right = x + 1 in range(0, self.w) and cmap[x + 1][y]
+        left  = x - 1 in range(0, self.w) and cmap[x - 1][y]
+        down  = y + 1 in range(0, self.h) and cmap[x][y + 1]
+        up    = y - 1 in range(0, self.h) and cmap[x][y - 1]
+        return right, left, down, up 
