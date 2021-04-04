@@ -57,6 +57,8 @@ class GeneralAgent:
             smart_moves.append(Bombots.BOMB)
 
         # Choose randomly among the actions that seem relevant
-        action = random.choice(smart_moves)
+        if len(smart_moves) > 0:
+            action = random.choice(smart_moves) 
+        else: action = Bombots.NOP
         
         return action
