@@ -19,9 +19,17 @@ agent_a = GeneralAgent(env)
 agent_b = RandomAgent(env)
 
 if '--test' not in sys.argv:
-    state_a, state_b = env.reset()
+    states = env.reset()
+    
+    state_a = states[0]
+    state_b = states[1]
+    
     while True:
-        state_a, state_b, done = env.step([agent_a.act(state_a), agent_b.act(state_b)])
+        states, rewards, done, info = env.step([agent_a.act(state_a), agent_b.act(state_b)])
         env.render()
+        
         if done: 
-            state_a, state_b = env.reset()
+            states = env.reset()
+    
+            state_a = states[0]
+            state_b = states[1]

@@ -28,8 +28,17 @@ if '--test' not in sys.argv:
     while True:
         for i in range(len(envs)):
             env = envs[i]
-            states_a[i], states_b[i], done = env.step([agents_a[i].act(states_a[i]), agents_b[i].act(states_b[i])])
+
+            states, rewards, done, info = env.step([agents_a[i].act(states_a[i]), agents_b[i].act(states_b[i])])
+            
+            states_a[i] = states[0]
+            states_b[i] = states[1]
+
             env.render()
             screen.blit(env.screen, ((i % 4) * (env.w + 1) * env.scale, (i // 4) * (env.h + 1) * env.scale))
+            
             if done: 
-                state_a, state_b = env.reset()
+                states = env.reset()
+                states_a[i] = states[0]
+                states_b[i] = states[1]
+            
