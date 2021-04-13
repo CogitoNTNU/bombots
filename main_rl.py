@@ -1,12 +1,8 @@
-
 from environment.bombots import Bombots
-
-import numpy as np
-import pygame as pg
-import random
-import sys
 from examples.agent_rl import RLAgent
 
+# For Travis
+import sys
 if '--novid' in sys.argv: 
     import os
     os.environ["SDL_VIDEODRIVER"] = "dummy"
@@ -19,8 +15,7 @@ env = Bombots(
     render_mode = Bombots.RENDER_GFX_RGB # Change this to Bombots.NO_RENDER if you remove the render call
 )
 
-agent_a = RLAgent(env)
-agent_b = RLAgent(env)
+agents = [RLAgent(env), RLAgent(env)]
 
 if '--test' not in sys.argv:
     states  = env.reset()
@@ -29,10 +24,7 @@ if '--test' not in sys.argv:
     info    = {}
 
     while True:
-        states, rewards, done, info = env.step([
-            agent_a.act(states[0], rewards[0], done, info), 
-            agent_b.act(states[1], rewards[1], done, info)
-        ])
+        states, rewards, done, info = env.step([agents[i].act(states[i], rewards[i], done, info) for i in range(len(agents))])
         
         env.render() # Comment out this call to train faster
         
