@@ -2,7 +2,7 @@ import random
 import sys
 import numpy as np
 sys.path.append("..")
-from environment.bombots import Bombots
+from bombots.environment import Bombots
 from collections import Counter
 
 class RuleBasedAgent:

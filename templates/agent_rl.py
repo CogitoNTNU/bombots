@@ -1,7 +1,6 @@
 import random
 import sys
 sys.path.append("..")
-from environment.bombots import Bombots
 
 class RLAgent:
     def __init__(self, env):
