@@ -1,6 +1,6 @@
 from environment.bombots import Bombots
-from examples.agent_random import RandomAgent
-from examples.agent_rulebased import RuleBasedAgent
+from templates.agent_random import RandomAgent
+from templates.agent_rulebased import RuleBasedAgent
 import pygame as pg
 
 # For Travis

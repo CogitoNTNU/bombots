@@ -1,5 +1,5 @@
 from environment.bombots import Bombots
-from examples.agent_rl import RLAgent
+from templates.agent_rl import RLAgent
 
 # For Travis
 import sys
