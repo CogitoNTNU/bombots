@@ -1,4 +1,4 @@
-from environment.bombots import Bombots
+from bombots.environment import Bombots
 from templates.agent_rl import RLAgent
 
 # For Travis

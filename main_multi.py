@@ -1,4 +1,4 @@
-from environment.bombots import Bombots
+from bombots.environment import Bombots
 from templates.agent_random import RandomAgent
 from templates.agent_rulebased import RuleBasedAgent
 import pygame as pg
