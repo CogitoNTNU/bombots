@@ -14,4 +14,6 @@ install:
 
 # command to run tests
 script:
-  - python main.py --novid --test
+  - python main_rulebased.py --novid --test
+  - python main_rl.py --novid --test
+  - python main_multi.py --novid --test

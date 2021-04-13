@@ -1,21 +1,21 @@
 
-import environment.bombots as bb
+from environment.bombots import Bombots
 
 import numpy as np
 import pygame as pg
 import random
 import sys
 from examples.agent_random import RandomAgent
-from agent_template import GeneralAgent
+from examples.agent_rulebased import RuleBasedAgent
 
 
 if '--novid' in sys.argv: 
     import os
     os.environ["SDL_VIDEODRIVER"] = "dummy"
 
-env = bb.Bombots(scale=64, framerate=5)
+env = Bombots(scale=64, framerate=5, state_mode=Bombots.STATE_DICT)
 
-agent_a = GeneralAgent(env)
+agent_a = RuleBasedAgent(env)
 agent_b = RandomAgent(env)
 
 if '--test' not in sys.argv:

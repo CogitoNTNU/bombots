@@ -8,18 +8,30 @@ from gym import spaces
 from collections import deque
 from .texman import TexMan
 
+# - - - - - - - - - - - - - - - - \
+# Tensor state, shape=(5, h, w)   |
+# - - - - - - - - - - - - - - - - |
+# Layer 0: Your position          |
+# Layer 1: Other bot positions    |
+# Layer 2: Bomb positions         |
+# Layer 3: Fire positions         |
+# Layer 4: Box positions          |
+# Layer 5: Wall position          |
+# - - - - - - - - - - - - - - - - /
+
 class Bombots(gym.Env):
     NOP, UP, DOWN, LEFT, RIGHT, BOMB = range(6)
-    RENDER_GFX_RGB, RENDER_GFX_GRAY, RENDER_SIMPLE = range(3)
-    STATE_IMG, STATE_DICT, STATE_TENSOR = range(3)
+    NO_RENDER, RENDER_GFX_RGB, RENDER_GFX_GRAY, RENDER_SIMPLE = range(4)
+    STATE_IMG, STATE_DICT, STATE_TENSOR = range(3) 
 
-    def __init__(self, dimensions=(11, 11), render_mode=1, framerate=20, scale=32, start_pos=[(1, 1), (9, 9)], show_fps=False, standalone=True):
+    def __init__(self, dimensions=(11, 11), render_mode=RENDER_GFX_RGB, state_mode=STATE_TENSOR, framerate=20, scale=32, start_pos=[(1, 1), (9, 9)], show_fps=False, standalone=True, verbose=True):
         # Environment configuration
         self.dimensions = dimensions # w, h
         self.w, self.h = dimensions # for cleaner code :)
         self.start_pos = start_pos
         self.random_seed = 0
         self.n_frames = 0
+        self.verbose = verbose
 
         # Object management
         self.bbots = [Bombot(self, pos) for pos in start_pos] # Object list
@@ -38,8 +50,11 @@ class Bombots(gym.Env):
             'player1_wins' : 0,
             'player2_wins' : 0
         }
+
         # RL
         self.action_space = spaces.Discrete(6)
+        self.state_mode = state_mode
+        self.state_function = list([None, self.get_state_dict, self.get_state_tensor])[self.state_mode] 
 
         # Rendering
         self.scale         = scale # pixels per square
@@ -49,7 +64,7 @@ class Bombots(gym.Env):
         self.show_fps      = show_fps
         
         # Pygame setup
-        if self.render:  
+        if self.render_mode != self.NO_RENDER:  
             if standalone:
                 pg.init()
                 self.screen = pg.display.set_mode((self.dimensions[0] * self.scale, self.dimensions[1] * self.scale))
@@ -68,16 +83,16 @@ class Bombots(gym.Env):
             self.n_frames = 0
             done = True
 
-        # Clearance
+        # Clear dynamic maps
         self.fire_map = np.zeros(self.dimensions)
 
-        # Event handling
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                pg.quit()
-                sys.exit()
-
-        pg.event.pump()
+        # Pygame event handling (resolves some crashing)
+        if self.render_mode != self.NO_RENDER:
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    pg.quit()
+                    sys.exit()
+            pg.event.pump()
 
         # Apply actions
         for i in range(len(self.bbots)):
@@ -111,30 +126,51 @@ class Bombots(gym.Env):
                 self.upers.remove(upg)
         self.killbuf_upg.clear()
         
+        # Check for death
+
         for i in range(len(self.bbots)):
             if self.fire_map[self.bbots[i].x][self.bbots[i].y] == 1:
-                self.stats['player{}_wins'.format(i + 1)] += 1
+                self.stats['player{}_wins'.format(((i + 1) % 2) + 1)] += 1
                 self.bbots[i].dead = True
                 done = True
 
-        state_a = {'agent_pos' : (self.bbots[0].x, self.bbots[0].y), 'enemy_pos' : (self.bbots[1].x, self.bbots[1].y)}
-        state_b = {'agent_pos' : (self.bbots[1].x, self.bbots[1].y), 'enemy_pos' : (self.bbots[0].x, self.bbots[0].y)}
-        
-        bomb_pos = [(bomb.x, bomb.y) for bomb in self.bombs]
-        state_a['bomb_pos'] = bomb_pos
-        state_b['bomb_pos'] = bomb_pos
-        
-        state_a['agent_ref'] = self.bbots[0]
-        state_b['agent_ref'] = self.bbots[1]
-        
-        state_a['enemy_ref'] = self.bbots[1]
-        state_b['enemy_ref'] = self.bbots[0]
+                if self.verbose: print('Player {} wins!'.format(((i + 1) % 2) + 1))
 
-        states = [state_a, state_b]
-        rewards = [0, 0]
-        info = {}
+        # Setup return values
+
+        states = [self.state_function(bot) for bot in self.bbots]
+        rewards = [0 if not done else -1 if bot.dead else 1 for bot in self.bbots]
+        info = self.stats
+
         return states, rewards, done, info
+    
+    def get_state_tensor(self, bot):
+        tensor = np.zeros((6, self.w, self.h))
+        tensor[0][bot.x][bot.y] = 1
         
+        for obot in self.bbots:
+            if obot != bot:
+                tensor[1][obot.x][obot.y] = 1
+        
+        for bomb in self.bombs:
+            tensor[2][bomb.x][bomb.y] = 1
+            
+        tensor[3] = np.copy(self.fire_map)
+        tensor[4] = np.copy(self.box_map)
+        tensor[5] = np.copy(self.wall_map)
+
+        return tensor
+
+    def get_state_dict(self, bot):
+        state = {}
+        
+        state['self_pos'] = (bot.x, bot.y)
+        state['ammo'] = bot.ammo
+        state['opponent_pos'] = [(obot.x, obot.y) for obot in filter(lambda x : x != bot, self.bbots)]
+        state['bomb_pos'] = [(bomb.x, bomb.y) for bomb in self.bombs]
+        
+        return state
+
     def reset(self): # TODO: Make this a real reset function
         self.bbots = [Bombot(self, pos) for pos in self.start_pos] # Object list
         self.bombs = [] # Object list
@@ -143,20 +179,7 @@ class Bombots(gym.Env):
 
         self.generate_map()
         
-        state_a = {'agent_pos' : (self.bbots[0].x, self.bbots[0].y), 'enemy_pos' : (self.bbots[1].x, self.bbots[1].y)}
-        state_b = {'agent_pos' : (self.bbots[1].x, self.bbots[1].y), 'enemy_pos' : (self.bbots[0].x, self.bbots[0].y)}
-        
-        bomb_pos = [(bomb.x, bomb.y) for bomb in self.bombs]
-        state_a['bomb_pos'] = bomb_pos
-        state_b['bomb_pos'] = bomb_pos
-        
-        state_a['agent_ref'] = self.bbots[0]
-        state_b['agent_ref'] = self.bbots[1]
-        
-        state_a['enemy_ref'] = self.bbots[1]
-        state_b['enemy_ref'] = self.bbots[0]
-
-        states = [state_a, state_b]
+        states = [self.state_function(bot) for bot in self.bbots]
         
         return states
 
@@ -180,71 +203,74 @@ class Bombots(gym.Env):
                     self.upers.append(Upgrade(self, (i, j), random.randint(0, 1)))
 
     def render(self):
-        # Base color
-        pg.draw.rect(self.screen, (24, 24, 24), (0, 0, self.dimensions[0] * self.scale, self.dimensions[1] * self.scale))
-        
-        for i in range(self.dimensions[0]):
-            for j in range(self.dimensions[1]):
-                # Wall
-                if self.wall_map[i][j] == 1:
-                    self.screen.blit(self.tm.spr_wall, (self.scale * i, self.scale * j, self.scale, self.scale))
-                # Floor
-                else:
-                    self.screen.blit(self.tm.spr_floor, (self.scale * i, self.scale * j, self.scale, self.scale))
-                # Box
-                if self.box_map[i][j] == 1:
-                    self.screen.blit(self.tm.spr_box, (self.scale * i, self.scale * j, self.scale, self.scale))
-                
-                # Fire
-                if self.fire_map[i][j] == 1:
-                    f_bstr = self.get_neighbors(i, j, self.fire_map)
+        if self.render_mode != self.NO_RENDER:
+            # Base color
+            pg.draw.rect(self.screen, (24, 24, 24), (0, 0, self.dimensions[0] * self.scale, self.dimensions[1] * self.scale))
+            
+            for i in range(self.dimensions[0]):
+                for j in range(self.dimensions[1]):
+                    # Wall
+                    if self.wall_map[i][j] == 1:
+                        self.screen.blit(self.tm.spr_wall, (self.scale * i, self.scale * j, self.scale, self.scale))
+                    # Floor
+                    else:
+                        self.screen.blit(self.tm.spr_floor, (self.scale * i, self.scale * j, self.scale, self.scale))
+                    # Box
+                    if self.box_map[i][j] == 1:
+                        self.screen.blit(self.tm.spr_box, (self.scale * i, self.scale * j, self.scale, self.scale))
                     
-                    fspr_key = 'x'
-                    
-                    # Ends
-                    if f_bstr == (1, 0, 0, 0): fspr_key = 'w'
-                    if f_bstr == (0, 1, 0, 0): fspr_key = 'e'
-                    if f_bstr == (0, 0, 1, 0): fspr_key = 'n'
-                    if f_bstr == (0, 0, 0, 1): fspr_key = 's'
-                    
-                    # Beams
-                    if f_bstr == (1, 1, 0, 0): fspr_key = 'h'
-                    if f_bstr == (0, 0, 1, 1): fspr_key = 'v'
-                    
-                    self.screen.blit(self.tm.spr_fire[fspr_key], (self.scale * i, self.scale * j, self.scale, self.scale))
-        
-        # Bombs
-        for bomb in self.bombs:
-            self.screen.blit(self.tm.spr_bomb[3 - (bomb.fuse // 8)], (self.scale * bomb.x, self.scale * bomb.y, self.scale, self.scale))
-        
-        # Upgrade
-        for upg in self.upers:
-            self.screen.blit(self.tm.spr_pop_num if upg.upgrade_type == Upgrade.AMMO else self.tm.spr_pop_ext, (self.scale * upg.x, self.scale * upg.y, self.scale, self.scale))
+                    # Fire
+                    if self.fire_map[i][j] == 1:
+                        f_bstr = self.get_neighbors(i, j, self.fire_map)
+                        
+                        fspr_key = 'x'
+                        
+                        # Ends
+                        if f_bstr == (1, 0, 0, 0): fspr_key = 'w'
+                        if f_bstr == (0, 1, 0, 0): fspr_key = 'e'
+                        if f_bstr == (0, 0, 1, 0): fspr_key = 'n'
+                        if f_bstr == (0, 0, 0, 1): fspr_key = 's'
+                        
+                        # Beams
+                        if f_bstr == (1, 1, 0, 0): fspr_key = 'h'
+                        if f_bstr == (0, 0, 1, 1): fspr_key = 'v'
+                        
+                        self.screen.blit(self.tm.spr_fire[fspr_key], (self.scale * i, self.scale * j, self.scale, self.scale))
+            
+            # Bombs
+            for bomb in self.bombs:
+                self.screen.blit(self.tm.spr_bomb[3 - (bomb.fuse // 8)], (self.scale * bomb.x, self.scale * bomb.y, self.scale, self.scale))
+            
+            # Upgrade
+            for upg in self.upers:
+                self.screen.blit(self.tm.spr_pop_num if upg.upgrade_type == Upgrade.AMMO else self.tm.spr_pop_ext, (self.scale * upg.x, self.scale * upg.y, self.scale, self.scale))
 
-        # Bots
-        bot = self.bbots[0]
-        if bot.face == Bombot.FACE_N: self.screen.blit(self.tm.spr_bot['green']['n'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
-        if bot.face == Bombot.FACE_S: self.screen.blit(self.tm.spr_bot['green']['s'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
-        if bot.face == Bombot.FACE_E: self.screen.blit(self.tm.spr_bot['green']['e'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
-        if bot.face == Bombot.FACE_W: self.screen.blit(self.tm.spr_bot['green']['w'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
-        
-        # Forgive the horrible code here [TODO: Make this nice]
-        bot = self.bbots[1]
-        if bot.face == Bombot.FACE_N: self.screen.blit(self.tm.spr_bot['yellow']['n'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
-        if bot.face == Bombot.FACE_S: self.screen.blit(self.tm.spr_bot['yellow']['s'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
-        if bot.face == Bombot.FACE_E: self.screen.blit(self.tm.spr_bot['yellow']['e'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
-        if bot.face == Bombot.FACE_W: self.screen.blit(self.tm.spr_bot['yellow']['w'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
-        
-        # Overlays
-        if self.show_fps:
-            fps = 1000 // (sum(list(self.buf_frametime)) / len(list(self.buf_frametime)))
-            text_surface = self.font.render('FPS: {}'.format(fps), True, (255, 0, 0))
-            self.screen.blit(text_surface, dest=(self.scale * self.w - text_surface.get_width() - 8, 8))
-            text_surface2 = self.font.render('Stats: {} - {}'.format(self.stats['player1_wins'], self.stats['player2_wins']), True, (255, 0, 0))
-            self.screen.blit(text_surface2, dest=(self.scale * self.w - text_surface2.get_width() - 8, 32))
-        
-        pg.display.flip()
-        self.buf_frametime.append(self.clock.tick(int(self.framerate)))
+            # Bots
+            bot = self.bbots[0]
+            if bot.face == Bombot.FACE_N: self.screen.blit(self.tm.spr_bot['green']['n'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+            if bot.face == Bombot.FACE_S: self.screen.blit(self.tm.spr_bot['green']['s'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+            if bot.face == Bombot.FACE_E: self.screen.blit(self.tm.spr_bot['green']['e'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+            if bot.face == Bombot.FACE_W: self.screen.blit(self.tm.spr_bot['green']['w'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+            
+            # Forgive the horrible code here [TODO: Make this nice]
+            bot = self.bbots[1]
+            if bot.face == Bombot.FACE_N: self.screen.blit(self.tm.spr_bot['yellow']['n'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+            if bot.face == Bombot.FACE_S: self.screen.blit(self.tm.spr_bot['yellow']['s'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+            if bot.face == Bombot.FACE_E: self.screen.blit(self.tm.spr_bot['yellow']['e'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+            if bot.face == Bombot.FACE_W: self.screen.blit(self.tm.spr_bot['yellow']['w'], (self.scale * bot.x, self.scale * bot.y, self.scale, self.scale))
+            
+            # Overlays
+            if self.show_fps:
+                fps = 1000 // (sum(list(self.buf_frametime)) / len(list(self.buf_frametime)))
+                text_surface = self.font.render('FPS: {}'.format(fps), True, (255, 0, 0))
+                self.screen.blit(text_surface, dest=(self.scale * self.w - text_surface.get_width() - 8, 8))
+                text_surface2 = self.font.render('Stats: {} - {}'.format(self.stats['player1_wins'], self.stats['player2_wins']), True, (255, 0, 0))
+                self.screen.blit(text_surface2, dest=(self.scale * self.w - text_surface2.get_width() - 8, 32))
+            
+            pg.display.flip()
+            self.buf_frametime.append(self.clock.tick(int(self.framerate)))
+        else:
+            raise RuntimeError('Render function was called with render_mode=Bombots.NO_RENDER. Resolve this either by removing the call or change render mode.')
 
     def get_neighbors(self, x, y, cmap):
         right = x + 1 in range(0, self.w) and cmap[x + 1][y]

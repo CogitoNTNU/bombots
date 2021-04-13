@@ -5,7 +5,7 @@ sys.path.append("..")
 from environment.bombots import Bombots
 from collections import Counter
 
-class GeneralAgent:
+class RuleBasedAgent:
     
     # Feel free to remove the comments from this file, they 
     # can be found in the source on GitHub at any time
@@ -37,7 +37,7 @@ class GeneralAgent:
         smart_moves = []
 
         # Get agent coordinates from dictionary
-        x, y = env_state['agent_pos']
+        x, y = env_state['self_pos']
 
         # Combine box map and wall map into one collision matrix (as both are solid)
         solid_map = np.logical_or(self.env.box_map, self.env.wall_map)
@@ -49,11 +49,11 @@ class GeneralAgent:
         if y - 1 in range(0, self.env.h) and solid_map[x][y - 1] == 0: smart_moves.append(Bombots.UP)
 
         # If standing on a bomb [Just an example, not used here]
-        if env_state['agent_pos'] in env_state['bomb_pos']:
+        if env_state['self_pos'] in env_state['bomb_pos']:
             pass
         
         # If possible, consider bombing
-        if env_state['agent_ref'].ammo > 0: 
+        if env_state['ammo'] > 0: 
             smart_moves.append(Bombots.BOMB)
 
         # Choose randomly among the actions that seem relevant

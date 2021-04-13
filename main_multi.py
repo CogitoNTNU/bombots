@@ -1,11 +1,11 @@
-import environment.bombots as bb
+from environment.bombots import Bombots
 
 import numpy as np
 import pygame as pg
 import random
 import sys
 from examples.agent_random import RandomAgent
-from agent_template import GeneralAgent
+from examples.agent_rulebased import RuleBasedAgent
 
 
 if '--novid' in sys.argv: 
@@ -16,10 +16,10 @@ cell_scale = 16
 pg.init()
 
 screen = pg.display.set_mode((cell_scale * 12 * 4, cell_scale * 12 * 4))            
-envs = [bb.Bombots(scale=cell_scale, framerate=0, standalone=False) for _ in range(4 * 4)]
+envs = [Bombots(scale=cell_scale, framerate=0, standalone=False, state_mode=Bombots.STATE_DICT) for _ in range(4 * 4)]
 
-agents_a = [GeneralAgent(env) for env in envs]
-agents_b = [GeneralAgent(env) for env in envs]
+agents_a = [RuleBasedAgent(env) for env in envs]
+agents_b = [RandomAgent(env) for env in envs]
 
 if '--test' not in sys.argv:
     states_a = [env.reset()[0] for env in envs]
@@ -41,4 +41,3 @@ if '--test' not in sys.argv:
                 states = env.reset()
                 states_a[i] = states[0]
                 states_b[i] = states[1]
-            
