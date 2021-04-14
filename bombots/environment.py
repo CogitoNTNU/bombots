@@ -34,7 +34,7 @@ class Bombots(gym.Env):
         self.verbose = verbose
 
         # Object management
-        self.bbots = [Bombot(self, pos) for pos in start_pos] # Object list
+        self.bbots = [Bombot(self, start_pos[i], i + 1) for i in range(len(start_pos))] # Object list
         self.bombs = [] # Object list
         self.fires = [] # Object list
         self.upers = [] # Object list
@@ -47,8 +47,18 @@ class Bombots(gym.Env):
 
         # Stats
         self.stats = {
-            'player1_wins' : 0,
-            'player2_wins' : 0
+            'player1' : {
+                'wins' : 0,
+                'boxes' : 0,
+                'bombs' : 0,
+                'upgrades' : 0
+            },
+            'player2' : {
+                'wins' : 0,
+                'boxes' : 0,
+                'bombs' : 0,
+                'upgrades' : 0
+            }
         }
 
         # RL
@@ -104,6 +114,7 @@ class Bombots(gym.Env):
                         bot.ammo += 1
                     if upg.upgrade_type == Upgrade.STR:
                         bot.str += 1
+                    self.stats['player{}'.format(bot.id)]['upgrades'] += 1
                     self.killbuf_upg.append(upg)
 
         # object tick
@@ -130,7 +141,7 @@ class Bombots(gym.Env):
 
         for i in range(len(self.bbots)):
             if self.fire_map[self.bbots[i].x][self.bbots[i].y] == 1:
-                self.stats['player{}_wins'.format(((i + 1) % 2) + 1)] += 1
+                self.stats['player{}'.format(((i + 1) % 2) + 1)]['wins'] += 1
                 self.bbots[i].dead = True
                 done = True
 
@@ -172,7 +183,7 @@ class Bombots(gym.Env):
         return state
 
     def reset(self): # TODO: Make this a real reset function
-        self.bbots = [Bombot(self, pos) for pos in self.start_pos] # Object list
+        self.bbots = [Bombot(self, self.start_pos[i], i + 1) for i in range(len(self.start_pos))] # Object list
         self.bombs = [] # Object list
         self.fires = [] # Object list
         self.upers = [] # Object list
@@ -264,7 +275,7 @@ class Bombots(gym.Env):
                 fps = 1000 // (sum(list(self.buf_frametime)) / len(list(self.buf_frametime)))
                 text_surface = self.font.render('FPS: {}'.format(fps), True, (255, 0, 0))
                 self.screen.blit(text_surface, dest=(self.scale * self.w - text_surface.get_width() - 8, 8))
-                text_surface2 = self.font.render('Stats: {} - {}'.format(self.stats['player1_wins'], self.stats['player2_wins']), True, (255, 0, 0))
+                text_surface2 = self.font.render('Stats: {} - {}'.format(self.stats['player1']['wins'], self.stats['player2']['wins']), True, (255, 0, 0))
                 self.screen.blit(text_surface2, dest=(self.scale * self.w - text_surface2.get_width() - 8, 32))
             
             pg.display.flip()
@@ -282,13 +293,14 @@ class Bombots(gym.Env):
 class Bombot:
     FACE_N, FACE_S, FACE_E, FACE_W = range(4)
     
-    def __init__(self, env, spawn_location):
+    def __init__(self, env, spawn_location, id):
         self.x, self.y = spawn_location # (i, j) = (x, y), [x][y]
         self.ammo = 1
         self.str = 1
         self.env = env
         self.face = Bombot.FACE_S
         self.dead = False
+        self.id = id
 
     def act(self, action):
         # Movement
@@ -324,6 +336,7 @@ class Bomb:
         self.fuse = 30
         self.str = self.instigator.str
         self.x, self.y = (instigator.x, instigator.y)
+        env.stats['player{}'.format(instigator.id)]['bombs'] += 1
 
     def tick(self):
         self.fuse -= 1
@@ -347,6 +360,7 @@ class Fire:
                 self.fire_pos.append((self.x + i, self.y))
                 if self.env.box_map[self.x + i][self.y] == 1:
                     self.env.box_map[self.x + i][self.y] = 0
+                    env.stats['player{}'.format(instigator.instigator.id)]['boxes'] += 1
                     break
             else:
                 break
@@ -356,6 +370,7 @@ class Fire:
                 self.fire_pos.append((self.x - i, self.y))
                 if self.env.box_map[self.x - i][self.y] == 1:
                     self.env.box_map[self.x - i][self.y] = 0
+                    env.stats['player{}'.format(instigator.instigator.id)]['boxes'] += 1
                     break
             else: 
                 break
@@ -365,6 +380,7 @@ class Fire:
                 self.fire_pos.append((self.x, self.y + i))
                 if self.env.box_map[self.x][self.y + i] == 1:
                     self.env.box_map[self.x][self.y + i] = 0
+                    env.stats['player{}'.format(instigator.instigator.id)]['boxes'] += 1
                     break
             else: 
                 break
@@ -374,6 +390,7 @@ class Fire:
                 self.fire_pos.append((self.x, self.y - i))
                 if self.env.box_map[self.x][self.y - i] == 1:
                     self.env.box_map[self.x][self.y - i] = 0
+                    env.stats['player{}'.format(instigator.instigator.id)]['boxes'] += 1
                     break
             else: 
                 break
