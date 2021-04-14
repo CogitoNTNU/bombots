@@ -38,7 +38,7 @@ if '--test' not in sys.argv:
             env.render()
 
             # Paste each individual environment surface into the master window
-            screen.blit(env.screen, ((i % 4) * (env.w + 1) * env.scale, (i // 4) * (env.h + 1) * env.scale))
+            screen.blit(env.screen, ((i % 4) * (env.width + 1) * env.scale, (i // 4) * (env.height + 1) * env.scale))
             
             if done: states[i] = env.reset()
                 

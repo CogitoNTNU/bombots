@@ -43,10 +43,10 @@ class RuleBasedAgent:
         solid_map = np.logical_or(self.env.box_map, self.env.wall_map)
         
         # Check for collisions in neighboring tiles
-        if x + 1 in range(0, self.env.w) and solid_map[x + 1][y] == 0: smart_moves.append(Bombots.RIGHT)
-        if x - 1 in range(0, self.env.w) and solid_map[x - 1][y] == 0: smart_moves.append(Bombots.LEFT)
-        if y + 1 in range(0, self.env.h) and solid_map[x][y + 1] == 0: smart_moves.append(Bombots.DOWN)
-        if y - 1 in range(0, self.env.h) and solid_map[x][y - 1] == 0: smart_moves.append(Bombots.UP)
+        if x + 1 in range(0, self.env.width) and solid_map[x + 1][y] == 0: smart_moves.append(Bombots.RIGHT)
+        if x - 1 in range(0, self.env.width) and solid_map[x - 1][y] == 0: smart_moves.append(Bombots.LEFT)
+        if y + 1 in range(0, self.env.height) and solid_map[x][y + 1] == 0: smart_moves.append(Bombots.DOWN)
+        if y - 1 in range(0, self.env.height) and solid_map[x][y - 1] == 0: smart_moves.append(Bombots.UP)
 
         # If standing on a bomb [Just an example, not used here]
         if env_state['self_pos'] in env_state['bomb_pos']:
