@@ -3,13 +3,13 @@ import pygame as pg
 
 class TexMan: # Texture Manager
     def __init__(self, scale):
-        dir = os.path.dirname(__file__)
-        filename = os.path.join(dir, 'res','bb_sprites.png')
+        mod_dir = os.path.dirname(__file__)
+        filename = os.path.join(mod_dir, 'res', 'bb_sprites.png')
         self.spr = pg.image.load(filename).convert_alpha()
-        
+
         self.src_scale = 32    # Determined by sheet
         self.dst_scale = scale # Determined by environment
-        
+
         # [TODO: Make this into a dictionary, add animation system]
         self.spr_floor = self.copy_spr((5, 0))
         self.spr_box = self.copy_spr((5, 1))
@@ -42,7 +42,6 @@ class TexMan: # Texture Manager
             }
         }
 
-        
         self.spr_pop_ext = self.copy_spr((5, 2))
         self.spr_pop_num = self.copy_spr((5, 3))
 
@@ -71,7 +70,10 @@ class TexMan: # Texture Manager
         self.spr_fire_v = self.copy_spr((7, 2)) # Vertical beam
         self.spr_fire_x = self.copy_spr((7, 1)) # Cross-section
 
-    def copy_spr(self, pos): # Copy specific sprite from sheet to surface (pos is sheet index, not in pixels)
+    # Copy specific sprite from sheet to surface (pos is sheet index, not in pixels)
+    def copy_spr(self, pos):
         spr = pg.Surface((self.src_scale, self.src_scale), pg.SRCALPHA)
-        spr.blit(self.spr, (0, 0, self.src_scale, self.src_scale), (self.src_scale * pos[0], self.src_scale * pos[1], self.src_scale, self.src_scale))
+        spr.blit(self.spr, (0, 0, self.src_scale, self.src_scale),
+                 (self.src_scale * pos[0], self.src_scale * pos[1],
+                  self.src_scale, self.src_scale))
         return pg.transform.scale(spr, (self.dst_scale, self.dst_scale))
