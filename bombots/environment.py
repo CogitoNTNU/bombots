@@ -24,7 +24,7 @@ class Bombots(gym.Env):
     STATE_IMG, STATE_DICT, STATE_TENSOR = range(3)
 
     def __init__(self, dimensions=(11, 11), render_mode=RENDER_GFX_RGB, state_mode=STATE_TENSOR,
-                 framerate=20, scale=32, show_fps=False, standalone=True, verbose=True):
+                 framerate=20, scale=32, show_fps=False, standalone=True, verbose=True, seed=None):
 
         start_pos = [(1, 1), (9, 9)]
 
@@ -35,6 +35,7 @@ class Bombots(gym.Env):
         self.random_seed = 0
         self.n_frames = 0
         self.verbose = verbose
+        self.seed = seed
 
         self.spr_keys = ['red', 'blue']
         # Object management
@@ -50,7 +51,7 @@ class Bombots(gym.Env):
 
         # Map generation
         self.fire_map = np.zeros(self.dimensions)
-        self.generate_map()
+        self.generate_map(seed=self.seed)
 
         # Stats
         self.stats = {
@@ -201,18 +202,19 @@ class Bombots(gym.Env):
         self.fires = []
         self.upers = []
 
-        self.generate_map()
+        self.generate_map(self.seed)
 
         states = [self.state_function(bot) for bot in self.bbots]
 
         return states
 
-    def generate_map(self, seed=0):
+    def generate_map(self, seed):
         self.wall_map = np.zeros(self.dimensions) # walls
         self.box_map = np.zeros(self.dimensions)
         self.fire_map = np.zeros(self.dimensions)
-
-        random.seed(seed)
+        
+        if seed:
+            random.seed(seed)
 
         start_area = [pos for pos in self.start_pos]
         for pos in self.start_pos:
