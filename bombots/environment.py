@@ -186,12 +186,13 @@ class Bombots(gym.Env):
 
     def get_state_dict(self, bot):
         state = {}
-
+        state['self_ref'] = bot
         state['self_pos'] = (bot.pos_x, bot.pos_y)
         state['ammo'] = bot.ammo
         state['opponent_pos'] = [(obot.pos_x, obot.pos_y) for obot in
                                  filter(lambda x: x != bot, self.bbots)]
         state['bomb_pos'] = [(bomb.pos_x, bomb.pos_y) for bomb in self.bombs]
+        state['bomb_ref'] = self.bombs
 
         return state
 
@@ -212,7 +213,7 @@ class Bombots(gym.Env):
         self.wall_map = np.zeros(self.dimensions) # walls
         self.box_map = np.zeros(self.dimensions)
         self.fire_map = np.zeros(self.dimensions)
-        
+
         if seed:
             random.seed(seed)
 
