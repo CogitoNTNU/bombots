@@ -2,6 +2,8 @@ import sys
 from bombots.environment import Bombots
 from templates.agent_random import RandomAgent
 from templates.agent_rulebased import RuleBasedAgent
+from templates.rulebasedAgent_0 import RuleBasedAgent_0
+from templates.rulebasedAgent_1 import RuleBasedAgent_1
 
 if '--novid' in sys.argv:
     import os
@@ -21,7 +23,7 @@ def main():
         render_mode=Bombots.RENDER_GFX_RGB
     )
 
-    agents = [RuleBasedAgent(env), RandomAgent(env)]
+    agents = [RuleBasedAgent_0(env), RuleBasedAgent_1(env)]
 
     if '--test' not in sys.argv:
         states = env.reset()
